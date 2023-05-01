@@ -88,9 +88,12 @@ def run_worker():
         session.commit()
         print("Job", job)
 
-        res = requests.get(job.image_url, stream=True)
+        try:
+            res = requests.get(job.image_url, stream=True)
 
-        if res.status_code == 200:
+            if res.status_code != 200:
+                raise Exception("ERROR: Image couldn't be retrieved")
+
             file_path = f"{WORKING_DIR}/{job.id}_original"
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(res.raw, f)
@@ -103,6 +106,7 @@ def run_worker():
             blurred = cv2.blur(image, (blur_kernel_size_x, blur_kernel_size_y))
             processed_path = f"{WORKING_DIR}/{job.id}_processed.png"
             cv2.imwrite(processed_path, blurred)
+
             print(f"Image processed: {processed_path}")
             client.fput_object(
                 S3_BUCKET_PROCESSING,
@@ -115,35 +119,10 @@ def run_worker():
             session.commit()
             print(f"Image uploaded: {job.processed_image_s3}")
 
-        else:
-            print("ERROR: Image couldn't be retrieved")
-
-        # try:
-        #     # Load the image and apply blurring
-        #     image = cv2.imread(image_path)
-        #     blurred = cv2.GaussianBlur(
-        #         image,
-        #         (blur_params["kernel_size"], blur_params["kernel_size"]),
-        #         blur_params["sigma"],
-        #     )
-        #
-        #     # Save the blurred image
-        #     blurred_path = image_path[:-4] + "_blurred.jpg"
-        #     cv2.imwrite(blurred_path, blurred)
-        #
-        #     # Publish result message to RabbitMQ exchange
-        #     result = {
-        #         "image_path": image_path,
-        #         "blurred_path": blurred_path,
-        #         "status": "success",
-        #     }
-        #     channel.basic_publish(
-        #         exchange="image_processing_results", routing_key="", body=json.dumps(result)
-        #     )
-        #
-        # except Exception as e:
-        #     # If there is an error in processing an image, log the error and continue to next image
-        #     print(f"Error processing image {image_path}: {str(e)}")
+        except Exception as e:
+            print(f"Error processing job {job.id}: {str(e)}")
+            job.status = "FAILED"
+            session.commit()
 
     channel.basic_consume(
         queue="image_processing", on_message_callback=callback, auto_ack=True

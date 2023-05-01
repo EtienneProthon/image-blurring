@@ -4,8 +4,10 @@
 	import { modalStore } from '@skeletonlabs/skeleton';
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
+	import { invalidateAll } from '$app/navigation';
 
 	import IconAlert from '~icons/mdi/alert';
+	import IconRestart from '~icons/mdi/restart';
 
 	export let job_group_id: string;
 
@@ -27,6 +29,11 @@
 		};
 		modalStore.trigger(d);
 	}
+
+	async function retryJob(job_id: string) {
+		await fetch(`${api_url}/job/${job_id}/retry`);
+		invalidateAll();
+	}
 </script>
 
 {#await getData()}
@@ -39,8 +46,16 @@
 				<p># {job.id}</p>
 				<span class="chip variant-filled">{job.status}</span>
 				<span class="flex-wrap">
-					{dayjs.duration(dayjs(job.finished_at).diff(dayjs(job.started_at))).format('mm:ss')}
+					{#if job.status == 'COMPLETED' || 'FAILED'}
+						{dayjs.duration(dayjs(job.finished_at).diff(dayjs(job.started_at))).format('m[m] s[s]')}
+					{:else}
+						{dayjs.duration(dayjs().diff(dayjs(job.created_at))).format('mm[m] ss[s]')}
+					{/if}
 				</span>
+				<button type="button" class="btn variant-filled" on:click={() => retryJob(job.id)}>
+					<IconRestart />
+					<span>Retry</span>
+				</button>
 			</div>
 			<div class="basis-1/3">
 				<Avatar

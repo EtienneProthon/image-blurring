@@ -18,7 +18,6 @@ npm run dev -- --open
 
 - Improve error handling
 - Add tests
-- Add job retry
 - Add pagination
 - Deploy inside a kubernetes cluster with autoscaling for the workers pools
 - Add replicate for RabbitMq and s3 (minio) to prevent data loss in case of crash and garantee high availability

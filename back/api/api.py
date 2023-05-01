@@ -89,6 +89,32 @@ def jobs_api():
     return jsonify(jobs)
 
 
+@app.route("/job/<job_id>/retry")
+def job_retry_api(job_id):
+    job = app.session.query(Job).get(job_id)
+    job.status = "NOTSTARTED"
+    app.session.commit()
+    # Add job inside the RabbitMQ queue
+    try:
+        message = {"job_id": job.id}
+        channel.basic_publish(
+            exchange="image_processing",
+            routing_key="image_processing",
+            body=json.dumps(message),
+        )
+        response = {
+            "job_retry": True,
+        }
+    except:
+        job.status = "FAILED"
+        app.session.commit()
+        response = {
+            "job_retry": False,
+        }
+
+    return jsonify(response)
+
+
 @app.route("/process_images", methods=["POST"])
 def process_images():
     # Load input data from JSON request
