@@ -1,0 +1,19 @@
+[project]
+name = "back"
+version = "0.0.1"
+dependencies = [
+  "flask",
+  "sqlalchemy",
+  "pika",
+  "requests",
+  "opencv-python",
+  "minio",
+  "python-dotenv",
+]
+[project.scripts]
+run-worker = "back.worker:run_worker"
+[tool.setuptools.packages.find]
+include = ["back"]
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
