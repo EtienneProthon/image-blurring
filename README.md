@@ -3,7 +3,9 @@
 ## Setup
 
 ```
+python -m venv # Create virtual env
 . .venv/bin/activate # Activate the virtual env
+pip install -r requirements.txt
 docker compose up -d # To launch postgresql, minio, rabbitmq
 pip install --editable .
 run-worker &
