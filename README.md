@@ -1,5 +1,9 @@
 # image-blurring
 
+## Overview
+
+![Overview](overview.jpg)
+
 ## Setup
 
 ```
