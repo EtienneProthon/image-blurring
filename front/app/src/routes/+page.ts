@@ -5,7 +5,10 @@ export const load = (async ({ fetch, depends }) => {
   const res = await fetch(`${api_url}/job_groups?order=-id`);
   const items = await res.json();
 
+  const need_refresh = items.some((e) => e.completed_jobs < e.total_jobs);
+
+  console.log('Need refresh', need_refresh);
   depends('app:job_groups');
 
-  return { items };
+  return { items, need_refresh };
 }) satisfies PageLoad;

@@ -1,5 +1,5 @@
+# import logging
 import json
-import logging
 import os
 import pathlib
 import shutil
@@ -122,6 +122,7 @@ def run_worker():
         except Exception as e:
             print(f"Error processing job {job.id}: {str(e)}")
             job.status = "FAILED"
+            job.finished_at = datetime.utcnow()
             session.commit()
 
     channel.basic_consume(

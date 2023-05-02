@@ -1,17 +1,17 @@
+# import logging
 import json
-import logging
+from datetime import datetime
 
 import pika
-from flask import Flask, _app_ctx_stack, jsonify, request, url_for
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from sqlalchemy import create_engine, except_, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import text
+from sqlalchemy.orm import scoped_session
 
 from back.database import Base, SessionLocal, engine
 from back.models import Job, JobGroup, JobGroupView
 
-logging.basicConfig()
+# logging.basicConfig()
 # logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # Initialize Database connection
@@ -35,13 +35,23 @@ with engine.connect() as con:
 
 session = scoped_session(SessionLocal)
 
-# Initialize RabbitMQ connection and channel
-connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
-channel = connection.channel()
 
-# Declare exchange and queue
-channel.exchange_declare(exchange="image_processing", exchange_type="direct")
-channel.queue_declare(queue="image_processing")
+# This is used to prevent connection auto close by rabbit after timeout
+def connect_to_rabbitmq_and_send_message(job_id):
+    # Initialize RabbitMQ connection and channel
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+    channel = connection.channel()
+
+    # Declare exchange and queue
+    channel.exchange_declare(exchange="image_processing", exchange_type="direct")
+    channel.queue_declare(queue="image_processing")
+    message = {"job_id": job_id}
+    channel.basic_publish(
+        exchange="image_processing",
+        routing_key="image_processing",
+        body=json.dumps(message),
+    )
+    connection.close()
 
 
 # Put not started job inside the queue
@@ -96,17 +106,14 @@ def job_retry_api(job_id):
     app.session.commit()
     # Add job inside the RabbitMQ queue
     try:
-        message = {"job_id": job.id}
-        channel.basic_publish(
-            exchange="image_processing",
-            routing_key="image_processing",
-            body=json.dumps(message),
-        )
+        connect_to_rabbitmq_and_send_message(job.id)
         response = {
             "job_retry": True,
         }
-    except:
+    except Exception as e:
+        print(f"ERROR: retrying job {job.id}: {str(e)}")
         job.status = "FAILED"
+        job.finished_at = datetime.utcnow()
         app.session.commit()
         response = {
             "job_retry": False,
@@ -138,14 +145,11 @@ def process_images():
 
         # Add job inside the RabbitMQ queue
         try:
-            message = {"job_id": job.id}
-            channel.basic_publish(
-                exchange="image_processing",
-                routing_key="image_processing",
-                body=json.dumps(message),
-            )
-        except:
+            connect_to_rabbitmq_and_send_message(job.id)
+        except Exception as e:
+            print(f"ERROR: sending job to queue {job.id}: {str(e)}")
             job.status = "FAILED"
+            job.finished_at = datetime.utcnow()
             app.session.commit()
 
     # Return number of job created

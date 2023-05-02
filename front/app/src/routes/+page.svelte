@@ -11,16 +11,29 @@
 	import type { ModalSettings, ModalComponent } from '@skeletonlabs/skeleton';
 	import IconRocket from '~icons/mdi/rocket-launch-outline';
 	import IconSend from '~icons/mdi/send';
+	import IconRefresh from '~icons/mdi/refresh';
 	import JobList from '$lib/JobList.svelte';
 	import ModalCreateProcess from '$lib/ModalCreateProcess.svelte';
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
-	import { invalidate } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 
 	export let data: PageData;
 	let api_url = import.meta.env.VITE_API_URL;
 
+	// let clear;
+	// $: {
+	// 	clearInterval(clear);
+	// 	if (data.need_refresh) {
+	// 		clear = setInterval(() => invalidateAll(), 10000);
+	// 	}
+	// }
+
 	dayjs.extend(duration);
+
+	function refresh(): void {
+		invalidate('app:job_groups');
+	}
 
 	const modalComponent: ModalComponent = {
 		// Pass a reference to your custom component
@@ -56,35 +69,38 @@
 	<svelte:fragment slot="lead"><IconRocket /></svelte:fragment>
 	<h2>Image Processing</h2>
 	<svelte:fragment slot="trail">
+		<button type="button" class="btn variant-filled" on:click={refresh}>
+			<IconRefresh />
+		</button>
 		<button type="button" class="btn variant-filled" on:click={modalProcess}>
 			<span>Run Process</span>
 			<IconSend />
 		</button>
 	</svelte:fragment>
 </AppBar>
-<div class="container flex items-center mx-auto">
+<div class="container flex overflow-auto items-center mx-auto">
 	<Accordion class="flex-grow">
 		{#each data.items as job_group}
 			<AccordionItem>
 				<svelte:fragment slot="lead">{job_group.id}</svelte:fragment>
 				<svelte:fragment slot="summary">
-					<div class="flex items-center">
-						<span>{dayjs(job_group.created_at).format('DD/MM/YYYY - HH:mm:ss')}</span>
+					<div class="flex flex-row items-center text-center">
+						<div class="basis-1/5">
+							{dayjs(job_group.created_at).format('DD/MM/YYYY - HH:mm:ss')}
+						</div>
 						<ProgressBar
 							class="{job_group.completed_jobs < job_group.total_jobs
 								? 'animate-pulse'
-								: ''} shrink"
+								: ''} basis-2/5 shrink"
 							value={job_group.completed_jobs}
 							max={job_group.total_jobs}
 						/>
-						-
-						<span>{job_group.completed_jobs}/{job_group.total_jobs}</span>
-						-
-						<span class="flex-wrap"
-							>{dayjs
+						<div class="basis-1/5">{job_group.completed_jobs}/{job_group.total_jobs}</div>
+						<div class="basis-1/5">
+							{dayjs
 								.duration(dayjs(job_group.finished_at).diff(dayjs(job_group.created_at)))
-								.format('mm:ss')}</span
-						>
+								.format('mm[m] ss[s]')}
+						</div>
 					</div>
 				</svelte:fragment>
 				<svelte:fragment slot="content"><JobList job_group_id={job_group.id} /></svelte:fragment>

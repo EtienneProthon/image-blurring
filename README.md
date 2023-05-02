@@ -16,6 +16,7 @@ npm run dev -- --open
 
 ## Next Steps
 
+- Use subscriptions to improve update behavior on frontend
 - Improve error handling
 - Add tests
 - Add pagination
