@@ -1,6 +1,6 @@
 {
-  "name": "@mypl/geronte",
-  "version": "0.12.1",
+  "name": "image-blurring",
+  "version": "0.0.1",
   "private": true,
   "packageManager": "npm@9.5.0",
   "workspaces": [
